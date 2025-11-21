@@ -9,8 +9,8 @@ app.use(express.urlencoded({ extended: true }));
 const pool = new Pool({
     user: 'postgres',
     host: 'localhost',
-    database: 'xxxxxx', // cambiar
-    password: 'xxxxxx', // cambiar
+    database: 'postgres', // cambiar
+    password: '123456', // cambiar
     port: 5432,
 });
 
@@ -626,12 +626,127 @@ app.post('/cama/borrar/:num_cama/:num_habitacion', async (req, res) => {
     }
 });
 
+//ESPECIALIDAD
+app.get('/especialidad', async (_req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT e.id_especialidad, e.nombre
+            FROM especialidad e
+            ORDER BY e.id_especialidad
+        `);
+
+        const filas = result.rows.map((e: any) => `
+            <tr>
+                <td>${e.id_especialidad}</td>
+                <td>${e.nombre}</td>
+                <td>
+                    <form method="POST" action="/especialidad/borrar/${e.id_especialidad}" style="display:inline">
+                        <button type="submit" onclick="return confirm('¿Borrar especialidad id:${e.id_especialidad}  nombre:${e.nombre}?')">Borrar</button>
+                    </form>
+                </td>
+            </tr>
+        `).join('');
+
+        res.send(`
+            <h1>Gestión de Especialidades</h1>
+            <a href="/especialidad/nueva">➕ Nueva Especialidad</a> | <a href="/">Inicio</a><br><br>
+            <table border="1" cellpadding="5">
+                <tr>
+                    <th>ID Especialidad</th>
+                    <th>Nombre</th>
+                </tr>
+                ${filas || '<tr><td colspan="2">No hay camas especialidades registradas.</td></tr>'}
+            </table>
+        `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//NUEVA ESPECIALIDAD
+app.get('/especialidad/nueva', async (_req, res) => {
+    try {
+        res.send(`
+            <h1>Nueva Especialidad</h1>
+            <form method="POST" action="/especialidad/nueva">
+            Nombre:
+            <input type="text" name="nombre" required><br><br>
+            <button type="submit">Guardar Especialidad</button>
+            </form>
+            <br><a href="/cama">Volver</a>
+        `);
+    } catch (err: any) {
+        res.status(500).send(`<pre>${err.message}</pre>`);
+    }
+});
+
+//AGREGAR NUEVA ESPECIALIDAD
+app.post('/especialidad/nueva', async (req, res) => {
+    const { nombre } = req.body;
+    try {
+        await pool.query(
+            `INSERT INTO especialidad (nombre) VALUES ($1)`,
+            [nombre]
+        );
+        res.redirect('/especialidad');
+    } catch (err: any) {
+        res.status(400).send(`
+            <h1>Error al guardar</h1>
+            <p>Es probable que esa especialidad ya exista.</p>
+            <pre>${err.message}</pre>
+            <a href="/especialidad/nueva">Volver</a>
+        `);
+    }
+});
+
+/**
+ * Se podria usar un ON DELETE CASCADE en las claves foraneas de la BD?
+ * No se si es recomendado hacerlo pero vi que se puede hacer asi tambien
+ * en vez de escribir siempre tanto codigo manual
+ * (Aunque en general se utiliza un flag de activo/inactivo)
+ */
+//BORRAR ESPECIALIDAD
+app.post('/especialidad/borrar/:id_especialidad', async (req, res) => {
+    const id_especialidad = Number(req.params.id_especialidad);
+
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        await client.query(
+            'DELETE FROM asignacion_guardia WHERE id_especialidad=$1',
+            [id_especialidad]
+        );
+
+        await client.query(
+            'DELETE FROM especializado_en WHERE id_especialidad=$1',
+            [id_especialidad]
+        );
+
+        await client.query(
+            'DELETE FROM especialidad WHERE id_especialidad=$1',
+            [id_especialidad]
+        );
+
+        await client.query('COMMIT');
+        res.redirect('/especialidad');
+
+    } catch (err: any) {
+        await client.query('ROLLBACK');
+        res.status(400).send(`<h1>Error</h1><pre>${err.message}</pre><a href="/especialidad">Volver</a>`);
+    } finally {
+        client.release();
+    }
+});
+
 /*
     HECHO (del faltan):
    - cama: clave compuesta (num_cama,num_habitacion) → forms con select de habitación + número de cama.
+   - especialidad
 
 	FALTAN:
-   - especialidad / especializado_en
+   - especializado_en
    - guardia / asignacion_guardia
    - periodo_vacaciones / tiene
    - internacion
