@@ -162,7 +162,7 @@ create table corresponde (
   fecha DATE not null,
   hora TIMESTAMP not null,
   
-  primary key (id_internacion,num_cama,fecha,hora),
+  primary key (id_internacion,num_cama,num_habitacion, fecha,hora),
   foreign key (num_cama,num_habitacion) references cama(num_cama, num_habitacion),
   foreign key (id_internacion) references internacion(id_internacion)
 );
