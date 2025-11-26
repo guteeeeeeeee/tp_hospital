@@ -306,6 +306,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trig_validar_fecha_movimiento ON corresponde;
 CREATE TRIGGER trig_validar_fecha_movimiento
 BEFORE INSERT OR UPDATE ON corresponde
 FOR EACH ROW EXECUTE FUNCTION validar_fecha_movimiento();
@@ -476,6 +477,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trig_validar_solapamiento_vacaciones ON tiene;
 CREATE TRIGGER trig_validar_solapamiento_vacaciones
 BEFORE INSERT OR UPDATE ON tiene
 FOR EACH ROW
@@ -505,6 +507,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_validar_guardias_por_dia ON asignacion_guardia;
 CREATE TRIGGER trg_validar_guardias_por_dia
 BEFORE INSERT ON asignacion_guardia
 FOR EACH ROW
